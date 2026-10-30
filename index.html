@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mapa de fechamento do Papum</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Papum Checklist">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #000000;
+    --card: #0a0a0a;
+    --text: #ffffff;
+    --muted: #a0a0a0;
+    --border: #2a2a2a;
+    --accent: #ffffff;
+    --danger: #ff5a5a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 16px 16px 80px;
+    line-height: 1.4;
+  }
+  .header {
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.3px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+  }
+  .progress {
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .section {
+    margin-bottom: 28px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 14px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    outline: none;
+  }
+  .section-title:focus {
+    background: #111;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin: -4px -8px 10px -8px;
+  }
+  .item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .checkbox {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #555;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    position: relative;
+  }
+  .checkbox.checked {
+    background: #fff;
+    border-color: #fff;
+  }
+  .checkbox.checked::after {
+    content: "✓";
+    color: #000;
+    font-size: 14px;
+    font-weight: 700;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -52%);
+    line-height: 1;
+  }
+  .item-text {
+    flex: 1;
+    outline: none;
+    min-height: 22px;
+    padding: 2px 0;
+    word-break: break-word;
+    border-radius: 4px;
+  }
+  .item-text:focus {
+    background: #111;
+    padding: 4px 6px;
+    margin: -2px -6px;
+  }
+  .item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  .item:hover .item-actions,
+  .item:focus-within .item-actions {
+    opacity: 1;
+  }
+  .btn-icon {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    line-height: 1;
+  }
+  .btn-icon:hover {
+    background: #222;
+    color: var(--text);
+  }
+  .btn-icon.danger:hover {
+    color: var(--danger);
+  }
+  .add-item-btn {
+    background: #111;
+    color: var(--muted);
+    border: 1px dashed #333;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+    transition: all 0.15s;
+  }
+  .add-item-btn:hover {
+    background: #1a1a1a;
+    color: var(--text);
+    border-color: #444;
+  }
+  .footer-actions {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .btn {
+    background: #111;
+    color: var(--text);
+    border: 1px solid #333;
+    padding: 12px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .btn:hover {
+    background: #1a1a1a;
+  }
+  .btn.primary {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+  }
+  .btn.primary:hover {
+    background: #eee;
+  }
+  .note {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 24px;
+    text-align: center;
+  }
+  @media (min-width: 600px) {
+    body { max-width: 520px; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const STORAGE_KEY = "papumFechamentoChecklist_v1";
+
+const INITIAL_DATA = [
+  {
+    id: "sec1",
+    title: "01 Segurança e confiabilidade",
+    items: [
+      { id: "i1", text: "Auditar as 9 vulnerabilidades da Hostinger e corrigir as relevantes", checked: false },
+      { id: "i2", text: "Corrigir a exclusão de conta para não apagar dados pela metade", checked: false },
+      { id: "i3", text: "Atualizar dependências de autenticação com testes de regressão", checked: false },
+      { id: "i4", text: "Testar isolamento de dados com duas contas reais", checked: false },
+      { id: "i5", text: "Conferir proteção de login, IP do proxy e sessões", checked: false },
+      { id: "i6", text: "Criar rotina de backup e testar restauração", checked: false }
+    ]
+  },
+  {
+    id: "sec2",
+    title: "02 Identidade e infraestrutura",
+    items: [
+      { id: "i7", text: "Conectar papumbarber.com.br e app.papumbarber.com.br", checked: false },
+      { id: "i8", text: "Conferir disponibilidade e custo do papumbarber.com", checked: false },
+      { id: "i9", text: "Criar suporte@ e contato@ no domínio", checked: false },
+      { id: "i10", text: "Configurar DNS de e-mail e envio automático", checked: false },
+      { id: "i11", text: "Separar banco de produção dos dados fictícios", checked: false },
+      { id: "i12", text: "Preparar Google OAuth para o domínio oficial", checked: false }
+    ]
+  },
+  {
+    id: "sec3",
+    title: "03 Contas e experiência",
+    items: [
+      { id: "i13", text: "Recuperação e redefinição de senha por e-mail", checked: false },
+      { id: "i14", text: "Confirmação de e-mail para novos cadastros por senha", checked: false },
+      { id: "i15", text: "Revisão final de Perfil e Minha conta", checked: false },
+      { id: "i16", text: "Revisão final de pacotes, devoluções, agenda e relatórios", checked: false },
+      { id: "i17", text: "Validar PWA, instalação e aparência no celular", checked: false }
+    ]
+  },
+  {
+    id: "sec4",
+    title: "04 Assinaturas e vendas",
+    items: [
+      { id: "i18", text: "Validar Asaas no CPF e condições para SaaS", checked: false },
+      { id: "i19", text: "Implementar período grátis de 7 dias e plano mensal", checked: false },
+      { id: "i20", text: "Integrar cobrança e webhooks em sandbox", checked: false },
+      { id: "i21", text: "Criar gerenciamento e cancelamento de renovação funcionais", checked: false },
+      { id: "i22", text: "Criar painel administrativo do proprietário", checked: false },
+      { id: "i23", text: "Criar landing page comercial com preço e cadastro", checked: false }
+    ]
+  },
+  {
+    id: "sec5",
+    title: "05 Conteúdo, documentos e suporte",
+    items: [
+      { id: "i24", text: "Finalizar Termos de Uso e Política de Privacidade", checked: false },
+      { id: "i25", text: "Atualizar FAQ para refletir funcionalidades reais", checked: false },
+      { id: "i26", text: "Configurar suporte por e-mail e WhatsApp Business", checked: false },
+      { id: "i27", text: "Finalizar textos sem 'em elaboração' ou 'em breve' indevidos", checked: false },
+      { id: "i28", text: "Testar jornada completa como um novo assinante", checked: false }
+    ]
+  },
+  {
+    id: "sec6",
+    title: "06 Depois do lançamento",
+    items: [
+      { id: "i29", text: "Banners de parceiros, dicas e cupons", checked: false },
+      { id: "i30", text: "Academia Papum e material educativo gratuito", checked: false },
+      { id: "i31", text: "Automação ou agente de IA para suporte", checked: false },
+      { id: "i32", text: "Recursos extras pedidos pelos primeiros assinantes", checked: false }
+    ]
+  }
+];
+
+let data = [];
+let meta = {
+  title: "Mapa de fechamento do Papum",
+  subtitle: "Checklist de planejamento — marque o que concluirmos e validarmos"
+};
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.sections) {
+        data = parsed.sections;
+        meta = parsed.meta || meta;
+      } else {
+        data = parsed;
+      }
+    } else {
+      data = JSON.parse(JSON.stringify(INITIAL_DATA));
+    }
+  } catch (e) {
+    data = JSON.parse(JSON.stringify(INITIAL_DATA));
+  }
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ sections: data, meta }));
+}
+
+function generateId(prefix = "id") {
+  return prefix + "_" + Math.random().toString(36).slice(2, 10);
+}
+
+function getProgress() {
+  let total = 0;
+  let done = 0;
+  data.forEach(sec => {
+    sec.items.forEach(item => {
+      total++;
+      if (item.checked) done++;
+    });
+  });
+  return { done, total };
+}
+
+function render() {
+  const app = document.getElementById("app");
+  const prog = getProgress();
+
+  let html = `
+    <div class="header">
+      <h1 contenteditable="true" id="main-title" spellcheck="false">${meta.title}</h1>
+      <p class="subtitle" contenteditable="true" id="main-subtitle" spellcheck="false">${meta.subtitle}</p>
+      <div class="progress">${prog.done}/${prog.total}</div>
+    </div>
+  `;
+
+  data.forEach((sec, sIdx) => {
+    html += `<div class="section" data-sec="${sec.id}">`;
+    html += `<div class="section-title" contenteditable="true" data-sec-title="${sec.id}" spellcheck="false">${sec.title}</div>`;
+
+    sec.items.forEach((item, iIdx) => {
+      html += `
+        <div class="item" data-item="${item.id}">
+          <div class="checkbox ${item.checked ? "checked" : ""}" data-check="${item.id}"></div>
+          <div class="item-text" contenteditable="true" data-item-text="${item.id}" spellcheck="false">${item.text}</div>
+          <div class="item-actions">
+            <button class="btn-icon danger" data-remove="${item.id}" title="Remover">×</button>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `<button class="add-item-btn" data-add-item="${sec.id}">+ Adicionar item</button>`;
+    html += `</div>`;
+  });
+
+  html += `
+    <div class="footer-actions">
+      <button class="btn primary" id="install-btn" style="display:none;">Instalar na tela inicial</button>
+      <button class="btn" id="add-section">+ Adicionar seção</button>
+      <button class="btn" id="reset-btn">Resetar para o original</button>
+    </div>
+    <p class="note">Uso pessoal • Alterações salvas automaticamente neste dispositivo</p>
+  `;
+
+  app.innerHTML = html;
+
+  attachEvents();
+}
+
+function attachEvents() {
+  document.querySelectorAll(".checkbox").forEach(el => {
+    el.addEventListener("click", (e) => {
+      const id = el.dataset.check;
+      const item = findItem(id);
+      if (item) {
+        item.checked = !item.checked;
+        saveData();
+        render();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.remove;
+      removeItem(id);
+    });
+  });
+
+  document.querySelectorAll("[data-add-item]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const secId = btn.dataset.addItem;
+      addItem(secId);
+    });
+  });
+
+  document.querySelectorAll("[data-item-text]").forEach(el => {
+    el.addEventListener("blur", () => {
+      const id = el.dataset.itemText;
+      const item = findItem(id);
+      if (item) {
+        const newText = el.textContent.trim();
+        if (newText !== item.text) {
+          item.text = newText || "Novo item";
+          saveData();
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-sec-title]").forEach(el => {
+    el.addEventListener("blur", () => {
+      const id = el.dataset.secTitle;
+      const sec = data.find(s => s.id === id);
+      if (sec) {
+        const newTitle = el.textContent.trim();
+        if (newTitle && newTitle !== sec.title) {
+          sec.title = newTitle;
+          saveData();
+        }
+      }
+    });
+  });
+
+  const mainTitle = document.getElementById("main-title");
+  const mainSub = document.getElementById("main-subtitle");
+  if (mainTitle) {
+    mainTitle.addEventListener("blur", () => {
+      const newTitle = mainTitle.textContent.trim();
+      if (newTitle && newTitle !== meta.title) {
+        meta.title = newTitle;
+        saveData();
+      }
+    });
+  }
+  if (mainSub) {
+    mainSub.addEventListener("blur", () => {
+      const newSub = mainSub.textContent.trim();
+      if (newSub !== meta.subtitle) {
+        meta.subtitle = newSub;
+        saveData();
+      }
+    });
+  }
+
+  document.getElementById("add-section")?.addEventListener("click", addSection);
+
+  document.getElementById("reset-btn")?.addEventListener("click", () => {
+    if (confirm("Resetar tudo para o checklist original? Suas alterações serão perdidas.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      data = JSON.parse(JSON.stringify(INITIAL_DATA));
+      meta = {
+        title: "Mapa de fechamento do Papum",
+        subtitle: "Checklist de planejamento — marque o que concluirmos e validarmos"
+      };
+      saveData();
+      render();
+    }
+  });
+}
+
+function findItem(id) {
+  for (const sec of data) {
+    const item = sec.items.find(i => i.id === id);
+    if (item) return item;
+  }
+  return null;
+}
+
+function removeItem(id) {
+  for (const sec of data) {
+    const idx = sec.items.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      sec.items.splice(idx, 1);
+      saveData();
+      render();
+      return;
+    }
+  }
+}
+
+function addItem(secId) {
+  const sec = data.find(s => s.id === secId);
+  if (!sec) return;
+  const newItem = {
+    id: generateId("item"),
+    text: "Novo item",
+    checked: false
+  };
+  sec.items.push(newItem);
+  saveData();
+  render();
+  setTimeout(() => {
+    const el = document.querySelector(`[data-item-text="${newItem.id}"]`);
+    if (el) {
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }, 50);
+}
+
+function addSection() {
+  const num = String(data.length + 1).padStart(2, "0");
+  const newSec = {
+    id: generateId("sec"),
+    title: `${num} Nova seção`,
+    items: [
+      { id: generateId("item"), text: "Novo item", checked: false }
+    ]
+  };
+  data.push(newSec);
+  saveData();
+  render();
+  setTimeout(() => {
+    const el = document.querySelector(`[data-sec-title="${newSec.id}"]`);
+    if (el) el.focus();
+  }, 50);
+}
+
+loadData();
+render();
+
+let deferredPrompt;
+const installBtn = () => document.getElementById("install-btn");
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = installBtn();
+  if (btn) btn.style.display = "block";
+});
+
+document.addEventListener("click", (e) => {
+  if (e.target.id === "install-btn") {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        deferredPrompt = null;
+        const btn = installBtn();
+        if (btn) btn.style.display = "none";
+      });
+    } else {
+      alert("No iPhone:\n1. Toque no botão de compartilhar (quadrado com seta)\n2. Role e escolha \"Adicionar à Tela de Início\"\n3. Confirme.");
+    }
+  }
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
